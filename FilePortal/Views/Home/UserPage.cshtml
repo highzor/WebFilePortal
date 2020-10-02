@@ -1,0 +1,132 @@
+﻿@{
+    ViewBag.Title = "Home Page";
+}
+
+<div class="alert alert-primary" role="alert">
+    <input type="file" name="upload" id="uploadFile"><br />
+    <button class="btn btn-primary" id="submit">Загрузить</button>
+</div>
+<div>
+    @Html.Partial("UserFilesList")
+</div>
+
+@section scripts{
+    <script type="text/javascript">
+        debugger;
+    $('#submit').on('click', function (e) {
+        e.preventDefault();
+        var files = document.getElementById('uploadFile').files;
+        if (files.length > 0) {
+            if (window.FormData !== undefined) {
+                var data = new FormData();
+                for (var x = 0; x < files.length; x++) {
+                    data.append("file" + x, files[x]);
+                }
+                debugger;
+                $.ajax({
+                    type: "POST",
+                    url: '@Url.Action("Upload", "Home")',
+                    contentType: false,
+                    processData: false,
+                    data: data,
+                    success: function (result) {
+                        debugger;
+                        alert(result);
+                            location.reload();
+                    },
+                    error: function (xhr, status, p3) {
+                        alert(xhr.responseText);
+                            location.reload();
+                    }
+                });
+            } else {
+                alert("Браузер не поддерживает загрузку файлов HTML5!");
+            }
+        }
+    });
+    </script>
+
+    <script type="text/javascript">
+        
+        debugger;
+        $('#delete').on('click', hand);
+
+        function hand(a) {
+            var res = confirm("Вы действительно желаете удалить эти файлы?");
+            if (!res) return false;
+            a.preventDefault();
+            var files = $(':checkbox').map(function (i, el) {
+                if ($(el).prop('checked')) {
+
+                    return $(el).val();
+                }
+            });
+            var mass = [];
+            for (var i = 0; i < files.length; i++) {
+                mass.push(files[i]);
+            }
+            var jsonvalues = JSON.stringify(mass);
+            if (files.length > 0) {
+                debugger;
+                $.ajax({
+                    type: "POST",
+                    url: '@Url.Action("Delete", "Home")',
+                    contentType: 'application/json',
+                    data: jsonvalues,
+                    success: function (result) {
+                        debugger;
+                        alert(result);
+                        location.reload();
+                    },
+                    error: function (xhr, status, p3) {
+                        alert(xhr.responseText);
+                        location.reload();
+                    }
+                });
+            } else {
+                alert("Браузер не поддерживает загрузку файлов HTML5!");
+            }
+        }
+        
+    </script>
+
+    @*<script type="text/javascript">
+            $('#delete').on('click', function (a) {
+                var res = confirm("Вы действительно желаете удалить эти файлы?");
+                if (!res) return false;
+                a.preventDefault();
+            var files = $(':checkbox').map(function (i, el) {
+                if ($(el).prop('checked')) {
+
+                    return $(el).val();
+                }
+            });
+                var mass = [];
+                for (var i = 0; i < files.length; i++) {
+                    mass.push(files[i]);
+                }
+                var jsonvalues = JSON.stringify(mass);
+            if (files.length > 0) {
+                    debugger;
+                    $.ajax({
+                        type: "POST",
+                        url: '@Url.Action("Delete", "Home")',
+                        contentType: 'application/json',
+                        data: jsonvalues ,
+                        success: function (result) {
+                            debugger;
+                            alert(result);
+                                location.reload();
+                        },
+                        error: function (xhr, status, p3) {
+                            alert(xhr.responseText);
+                                location.reload();
+                        }
+                    });
+                } else {
+                    alert("Браузер не поддерживает загрузку файлов HTML5!");
+                }
+
+            });
+        </script>*@
+}

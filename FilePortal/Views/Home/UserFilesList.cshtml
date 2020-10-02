@@ -1,0 +1,30 @@
+﻿<table class="table table-bordered">
+    <tr style="width: auto;">
+        <td></td>
+        <td align="center"><p>Имя файла</p></td>
+       
+        <td align="center"><p>Описание</p></td>
+       
+        <td align="center"><p>Размер</p></td>
+       
+        <td align="center"><p>Дата создания</p></td>
+        <td> </td>
+    </tr>
+    @foreach (var file in ViewBag.Files)
+    {
+<tr>
+    <td width="20"><p><input class="custom-control-input" type="checkbox" value="@file.FileId"></p></td>
+    <td align="center"><p>@file.FileName</p></td>
+    
+    <td align="center"><p>@file.Description</p></td>
+    
+    <td align="center"><p>@file.FileSize (MB)</p></td>
+    
+    <td align="center"><p>@file.CreateDate</p></td>
+    
+    <td align="center"><p><a href="/Home/Download/@file.FileId">Скачать</a></p></td>
+    
+</tr>
+    }
+</table>
+<button class="btn btn-primary" id="delete">Удалить</button>
