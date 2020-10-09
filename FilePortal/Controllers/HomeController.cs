@@ -34,16 +34,16 @@ namespace FilePortal.Controllers
         }
         public async System.Threading.Tasks.Task<ActionResult> UserPage()
         {
-            
+
             Guid userGuid = new Guid(User.Identity.GetUserId());
-            WebRequest request = WebRequest.Create("https://localhost:44385/Home/GetFileList?UserId="+userGuid);
+            WebRequest request = WebRequest.Create("https://localhost:44385/Home/GetFileList?UserId=" + userGuid);
             WebResponse response = await request.GetResponseAsync();
             string result;
             using (Stream stream = response.GetResponseStream())
             {
                 using (StreamReader reader = new StreamReader(stream))
                 {
-                   result = reader.ReadToEnd();
+                    result = reader.ReadToEnd();
                 }
             }
             var doc = JsonConvert.DeserializeObject<List<DocumentDTO>>(result);
@@ -59,58 +59,93 @@ namespace FilePortal.Controllers
         [HttpPost]
         public JsonResult Upload()
         {
-            foreach (string file in Request.Files)
+            string result = "";
+            try
             {
-                var upload = Request.Files[file];
-                if (upload != null)
+                foreach (string file in Request.Files)
                 {
-                    
-                    DocumentDTO doc = new DocumentDTO();
-                    string fileName = System.IO.Path.GetFileName(upload.FileName);
-                    // сохраняем файл в папку Files в проекте
-                    //upload.SaveAs(Server.MapPath("~/Files/" + fileName));
-                    MemoryStream target = new MemoryStream();
-                    upload.InputStream.CopyTo(target);
-                    byte[] data = target.ToArray();
-                    doc.Content = data;
-                    doc.CreateDate = DateTime.Now;
-                    doc.FileName = fileName;
-                    doc.FileId = Guid.NewGuid();
-                    doc.MimeType = upload.ContentType;
-                    doc.UserName = User.Identity.GetUserName();
-                    doc.UserId = new Guid(User.Identity.GetUserId());
-                    doc.FileSize = Decimal.Divide(doc.Content.Length, 1048576);
-                    //doc.FileSize = doc.Content.Length / 1048576;
-                    doc.FileNameInFileStorage = doc.FileId.ToString();
-                    doc.Description = "example";
-                    // client.InsertFile(doc);
-                    string json = JsonConvert.SerializeObject(doc);
-                    var httpRequest = (HttpWebRequest)WebRequest.Create("https://localhost:44385/Home/InsertFile");
-                    httpRequest.Method = "POST";
-                    httpRequest.ContentType = "application/json";
-                    using (var requestStream = httpRequest.GetRequestStream())
-                    using (var writer = new StreamWriter(requestStream))
+                    var upload = Request.Files[file];
+                    if (upload != null)
                     {
-                        writer.Write(json);
+                        DocumentDTO doc = new DocumentDTO();
+                        string fileName = System.IO.Path.GetFileName(upload.FileName);
+                        // сохраняем файл в папку Files в проекте
+                        //upload.SaveAs(Server.MapPath("~/Files/" + fileName));
+                        MemoryStream target = new MemoryStream();
+                        upload.InputStream.CopyTo(target);
+                        byte[] data = target.ToArray();
+                        doc.Content = data;
+                        doc.CreateDate = DateTime.Now;
+                        doc.FileName = fileName;
+                        doc.FileId = Guid.NewGuid();
+                        doc.MimeType = upload.ContentType;
+                        doc.UserName = User.Identity.GetUserName();
+                        doc.UserId = new Guid(User.Identity.GetUserId());
+                        doc.FileSize = Decimal.Divide(doc.Content.Length, 1048576);
+                        //doc.FileSize = doc.Content.Length / 1048576;
+                        doc.FileNameInFileStorage = doc.FileId.ToString();
+                        doc.Description = "example";
+                        // client.InsertFile(doc);
+                        string json = JsonConvert.SerializeObject(doc);
+                        var httpRequest = (HttpWebRequest)WebRequest.Create("https://localhost:44385/Home/InsertFile");
+                        httpRequest.Method = "POST";
+                        httpRequest.ContentType = "application/json";
+
+                        using (var requestStream = httpRequest.GetRequestStream())
+                        using (var writer = new StreamWriter(requestStream))
+                        {
+                            writer.Write(json);
+                        }
+                        using (var httpResponse = httpRequest.GetResponse())
+                        {
+                            using (Stream stream = httpResponse.GetResponseStream())
+                            {
+                                using (StreamReader reader = new StreamReader(stream))
+                                {
+                                    result = reader.ReadToEnd();
+                                }
+                            }
+                        }
+
                     }
-                    using (var httpResponse = httpRequest.GetResponse());
                 }
             }
-            return Json("файл загружен");
+            catch (Exception ex)
+            {
+                return Json(ex.Message);
+            }
+            return Json(result);
         }
 
         public async System.Threading.Tasks.Task<JsonResult> Delete(string[] id)
         {
             if (id.Length > 0)
             {
-                foreach (string onesId in id)
-                {
-                    Guid fileId = new Guid(onesId);
+                string result = "";
+                    //Guid fileId = new Guid(onesId);
+                    //WebRequest request = WebRequest.Create("https://localhost:44385/Home/DeleteFile?Id=" + id);
+                    //WebResponse response = await request.GetResponseAsync();
+                string json = JsonConvert.SerializeObject(id);
+                var httpRequest = (HttpWebRequest)WebRequest.Create("https://localhost:44385/Home/DeleteFile");
+                httpRequest.Method = "POST";
+                httpRequest.ContentType = "application/json";
 
-                    WebRequest request = WebRequest.Create("https://localhost:44385/Home/DeleteFile?Id=" + fileId);
-                    WebResponse response = await request.GetResponseAsync();
+                using (var requestStream = httpRequest.GetRequestStream())
+                using (var writer = new StreamWriter(requestStream))
+                {
+                    writer.Write(json);
                 }
-                return Json("файлы удалены");
+                using (var httpResponse = httpRequest.GetResponse())
+                {
+                    using (Stream stream = httpResponse.GetResponseStream())
+                    {
+                        using (StreamReader reader = new StreamReader(stream))
+                        {
+                            result = reader.ReadToEnd();
+                        }
+                    }
+                }
+                return Json(result);
             }
             return Json("файлы не удалены");
         }

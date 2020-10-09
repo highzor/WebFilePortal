@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Web;
 using System.Web.Mvc;
+using WebFileService.Models;
 
 namespace WebFileService.Controllers
 {
@@ -32,197 +33,71 @@ namespace WebFileService.Controllers
             return View();
         }
 
-        public void InsertFile(DocumentDTO document)
+        public JsonResult InsertFile(DocumentDTO document)
         {
-            Decimal FileSize = Decimal.Divide(document.Content.Length, 1048576);
-            string fullNamePath = "";
-
-            int size = 1000000;
-            if (ConfigurationManager.AppSettings["fileSize"] != null)
+            string result = "";
+            try
             {
-                size = Int32.Parse(ConfigurationManager.AppSettings["fileSize"]);
-            }
-            if (document.Content.Length > size)
-            {
-                fullNamePath = $"{ConfigurationManager.AppSettings["path"]}{document.FileNameInFileStorage}";
-                using (FileStream fstream = new FileStream(fullNamePath, FileMode.OpenOrCreate))
+                using (DataBaseHelper dbh = new DataBaseHelper())
                 {
-                    fstream.Write(document.Content, 0, document.Content.Length);
-                }
-                string connectionString = ConfigurationManager.ConnectionStrings["FileService"].ConnectionString;
-                using (SqlConnection connection = new SqlConnection(connectionString))
-                {
-                    connection.Open();
-                    SqlCommand command = new SqlCommand();
-                    command.Connection = connection;
-                    command.CommandText = @"INSERT INTO FileTable VALUES (@FileId, @UserId, @UserName, @FileName, @FileNameInFileStorage, @MimeType, @Description, @Content, @FileSize, @CreateDate)";
-                    command.Parameters.AddWithValue("@FileId", document.FileId);
-                    command.Parameters.AddWithValue("@UserId", document.UserId);
-                    command.Parameters.AddWithValue("@UserName", document.UserName);
-                    command.Parameters.AddWithValue("@FileName", document.FileName);
-                    command.Parameters.AddWithValue("@FileNameInFileStorage", document.FileNameInFileStorage);
-                    command.Parameters.AddWithValue("@MimeType", document.MimeType);
-                    command.Parameters.AddWithValue("@Description", document.Description);
-                    command.Parameters.Add("@Content", SqlDbType.VarBinary, -1);
-                    command.Parameters["@Content"].Value = DBNull.Value;
-                    command.Parameters.AddWithValue("@FileSize", document.FileSize = FileSize);
-                    command.Parameters.AddWithValue("@CreateDate", document.CreateDate);
-                    command.ExecuteNonQuery();
+                    result = dbh.AddFileToDB(document);
+                    return Json(result);
                 }
             }
-            else
+            catch
             {
-                string connectionString = ConfigurationManager.ConnectionStrings["FileService"].ConnectionString;
-                using (SqlConnection connection = new SqlConnection(connectionString))
-                {
-                    connection.Open();
-                    SqlCommand command = new SqlCommand();
-                    command.Connection = connection;
-                    command.CommandText = @"INSERT INTO FileTable VALUES (@FileId, @UserId, @UserName, @FileName, @FileNameInFileStorage, @MimeType, @Description, @Content, @FileSize, @CreateDate)";
-                    command.Parameters.AddWithValue("@FileId", document.FileId);
-                    command.Parameters.AddWithValue("@UserId", document.UserId);
-                    command.Parameters.AddWithValue("@UserName", document.UserName);
-                    command.Parameters.AddWithValue("@FileName", document.FileName);
-                    command.Parameters.AddWithValue("@FileNameInFileStorage", document.FileNameInFileStorage).Value = DBNull.Value;
-                    command.Parameters.AddWithValue("@MimeType", document.MimeType);
-                    command.Parameters.AddWithValue("@Description", document.Description);
-                    command.Parameters.AddWithValue("@Content", document.Content);
-                    command.Parameters.AddWithValue("@FileSize", document.FileSize = FileSize);
-                    command.Parameters.AddWithValue("@CreateDate", document.CreateDate);
-                    command.ExecuteNonQuery();
-                }
+                return Json($"Произошла ошибка при добавлении файла. Exception: {result}");
             }
-           // return Json("ok");
         }
         public JsonResult GetFileList(Guid UserId)
         {
-            List<DocumentDTO> list = new List<DocumentDTO>();
-            string connectionString = ConfigurationManager.ConnectionStrings["FileService"].ConnectionString;
-            using (SqlConnection connection = new SqlConnection(connectionString))
+            try
             {
-                connection.Open();
-                SqlCommand command = new SqlCommand();
-                command.Connection = connection;
-                command.CommandText = @"SELECT FileName, Description, FileSize, CreateDate, FileId FROM FileTable WHERE UserId=@UserId";
-                SqlParameter guiParam = new SqlParameter("@UserId", UserId);
-                command.Parameters.Add(guiParam);
-                SqlDataReader reader = command.ExecuteReader();
-                if (reader.HasRows)
+                using (DataBaseHelper dbh = new DataBaseHelper())
                 {
-                    while (reader.Read())
-                    {
-                        DocumentDTO document = new DocumentDTO();
-                        document.FileName = reader.GetValue(0).ToString();
-                        document.Description = reader.GetValue(1).ToString();
-                        document.FileSize = (Decimal)reader.GetValue(2);
-                        document.CreateDate = (DateTime)reader.GetValue(3);
-                        document.FileId = (Guid)reader.GetValue(4);
-                        list.Add(document);
-                    }
+                    var list = dbh.GetFileListFromDB(UserId);
+                    return Json(list, JsonRequestBehavior.AllowGet);
                 }
-                reader.Close();
             }
-           
-            var json = list;
-
-            return Json(json, JsonRequestBehavior.AllowGet);
+            catch (Exception ex)
+            {
+                return Json($"Произошла ошибка при получении файлов. Exception: {ex.Message}");
+            }
         }
 
-        public void DeleteFile(Guid Id)
+        public JsonResult DeleteFile(Guid[] Id)
         {
-            DocumentDTO document = new DocumentDTO();
-            string connectionString = ConfigurationManager.ConnectionStrings["FileService"].ConnectionString;
-            using (SqlConnection connection = new SqlConnection(connectionString))
+            string result = "";
+            try
             {
-                connection.Open();
-                SqlCommand command = new SqlCommand();
-                command.Connection = connection;
-                command.CommandText = @"SELECT FileNameInFileStorage FROM FileTable WHERE FileId=@Id";
-                SqlParameter guiParam = new SqlParameter("@Id", Id);
-                command.Parameters.Add(guiParam);
-                SqlDataReader reader = command.ExecuteReader();
-                reader.Read();
-                document.FileNameInFileStorage = reader.GetValue(0).ToString();
+                foreach (var Ids in Id)
+                {
+                    using (DataBaseHelper dbh = new DataBaseHelper())
+                    {
+                        result = dbh.DeleteFileFromDB(Ids);
+                    }
+                }
+                return Json(result);
             }
-
-            if (document.FileNameInFileStorage.Equals(""))
+            catch
             {
-                using (SqlConnection connection = new SqlConnection(connectionString))
-                {
-                    connection.Open();
-                    SqlCommand command = new SqlCommand();
-                    command.Connection = connection;
-                    command.CommandText = @"DELETE FROM FileTable WHERE FileId=@Id";
-                    SqlParameter guiParam = new SqlParameter("@Id", Id);
-                    command.Parameters.Add(guiParam);
-                    command.ExecuteNonQuery();
-                    //return Json("Ok");
-                }
+                return Json($"Произошла ошибка при удалении файлов. Exception: {result}");
             }
-            else
-            {
-                string fullNamePath = $"{ConfigurationManager.AppSettings["path"]}{document.FileNameInFileStorage}";
-                FileInfo myFile = new FileInfo(fullNamePath);
-                if (myFile.Exists)
-                {
-                    myFile.Delete();
-                }
-                using (SqlConnection connection = new SqlConnection(connectionString))
-                {
-                    connection.Open();
-                    SqlCommand command = new SqlCommand();
-                    command.Connection = connection;
-                    command.CommandText = @"DELETE FROM FileTable WHERE FileId=@Id";
-                    SqlParameter guiParam = new SqlParameter("@Id", Id);
-                    command.Parameters.Add(guiParam);
-                    command.ExecuteNonQuery();
-                   // return Json("Ok");
-                }
-            }
-            //return Json("file not found");
         }
         public JsonResult GetFile(Guid Id)
         {
-            DocumentDTO document = new DocumentDTO();
-            document.FileId = Id;
-            string connectionString = ConfigurationManager.ConnectionStrings["FileService"].ConnectionString;
-            using (SqlConnection connection = new SqlConnection(connectionString))
+            try
             {
-                connection.Open();
-                SqlCommand command = new SqlCommand();
-                command.Connection = connection;
-                command.CommandText = @"SELECT FileNameInFileStorage, FileName, MimeType, Content FROM FileTable WHERE FileId=@Id";
-                SqlParameter guiParam = new SqlParameter("@Id", document.FileId);
-                command.Parameters.Add(guiParam);
-                SqlDataReader reader = command.ExecuteReader();
-                if (reader.HasRows)
+                using (DataBaseHelper dbh = new DataBaseHelper())
                 {
-                    while (reader.Read())
-                    {
-                        document.FileNameInFileStorage = reader.GetValue(0).ToString();
-                        document.FileName = reader.GetValue(1).ToString();
-                        document.MimeType = reader.GetValue(2).ToString();
-                        try
-                        {
-                            document.Content = (byte[])reader.GetValue(3);
-                        }
-                        catch { }
-                    }
+                    string json = dbh.GetFileFromDB(Id);
+                    return Json(json, JsonRequestBehavior.AllowGet);
                 }
-                reader.Close();
-            }
-            if (!document.FileNameInFileStorage.Equals(""))
+            } catch (Exception ex)
             {
-                string fullNamePath = $"{ConfigurationManager.AppSettings["path"]}{document.FileNameInFileStorage}";
-                using (FileStream fstream = System.IO.File.OpenRead(fullNamePath))
-                {
-                    byte[] array = new byte[fstream.Length];
-                    fstream.Read(array, 0, array.Length);
-                    document.Content = array;
-                }
+                return Json($"Произошла ошибка при получении файла. Exception: {ex.Message}");
             }
-            string json = JsonConvert.SerializeObject(document);
-            return Json(json, JsonRequestBehavior.AllowGet); ;
+     
         }
 
     }
